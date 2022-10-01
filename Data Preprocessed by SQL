@@ -1,0 +1,127 @@
+-- To create table and import trip data for all 36months
+CREATE TABLE IF NOT EXISTS public.td_201907 
+(
+    start_date date,
+    start_time time without time zone,
+    end_date date,
+    end_time time without time zone,
+    start_station_id integer,
+    end_station_id integer,
+    member_type text COLLATE pg_catalog."default"
+);
+ALTER TABLE IF EXISTS public.td_201907
+    OWNER to postgres;
+COPY public.td_201907
+FROM 
+'D:\OVGU\ORBA\2nd Semester\Scientific Project\New Data\Data from SQL\trip data\td_201907.csv'
+DELIMITER ',' CSV HEADER;
+/* copied the smae process for 36times */
+
+/* --------------------------------------------------- */
+-- To merge them all into one single table name copy_td
+INSERT INTO copy_td(start_date,start_time,end_date,end_time,start_station_id,end_station_id,member_type
+)
+SELECT start_date,start_time,end_date,end_time,start_station_id,end_station_id,member_type
+FROM td_201907;
+/* copied the smae process for all trip data table */
+
+/* --------------------------------------------------- */
+-- To extract the count of total & individual member type data for each hour from copy_td table
+SELECT start_date, to_char(date_trunc('hour',start_time),'HH12:MI:SS') || ' - ' || to_char(date_trunc('hour',start_time)+ INTERVAL '1hour', 'HH12:MI:SS AM') AS time_period,
+	SUM(CASE WHEN member_type = 'Member' THEN 1 ELSE 0 END) AS reg_member,
+	SUM(CASE WHEN member_type = 'Casual' THEN 1 ELSE 0 END) AS casual_member,
+	COUNT(*) AS cnt
+FROM td_201907
+GROUP BY start_date,date_trunc('hour',start_time)
+ORDER BY start_date,date_trunc('hour',start_time)
+;
+
+/* --------------------------------------------------- */
+-- To import weather_history from downloaded historical weather data from visualcrossing.com and extract data as necessary from it
+
+CREATE TABLE IF NOT EXISTS public.weather_history
+(
+    date_id date,
+    time_id time without time zone,
+    temp_ numeric,
+    feelslike numeric,
+    humidity numeric,
+    precip numeric,
+    windspeed numeric,
+    sealvlpressure numeric
+);
+ALTER TABLE IF EXISTS public.weather_history
+    OWNER to postgres;
+    
+COPY public.weather_history
+FROM 
+'D:\OVGU\ORBA\2nd Semester\Scientific Project\New Data\Data from SQL\weather_history.csv'
+DELIMITER ',' CSV HEADER;
+
+SELECT 
+	date_id,
+	time_id,
+	TRUNC((temp_/100),2) AS ori_temp,
+	TRUNC((feelslike/100),4) AS a_temp,
+	TRUNC((humidity/99.89),2) AS hum,
+	TRUNC((windspeed/58.5),4) AS wind_spd
+FROM weather_history
+)
+
+/* --------------------------------------------------- */
+-- To create holidays table and import data from donloaded historial holiday schedule
+CREATE TABLE IF NOT EXISTS public.holidays
+(
+    date_id date,
+    id bigint NOT NULL DEFAULT nextval('holidays_id_seq'::regclass),
+    CONSTRAINT holidays_pkey PRIMARY KEY (id)
+);
+
+ALTER TABLE IF EXISTS public.holidays
+    OWNER to postgres;
+    
+COPY public.holidays
+FROM 
+'D:\OVGU\ORBA\2nd Semester\Scientific Project\New Data\Data from SQL\holidays.csv'
+DELIMITER ',' CSV HEADER;
+
+/* --------------------------------------------------- */
+-- To extract all necessary hour data from all data tables as hour.csv
+SELECT w.date_id,
+
+	CASE 
+	 WHEN date_part('month',w.date_id) between 3 and 5 THEN 2
+	 WHEN date_part('month',w.date_id) between 6 and 8 THEN 3
+	 WHEN date_part('month',w.date_id) between 9 and 11 THEN 4
+	ELSE 1 END AS season, --for season column
+
+	CASE WHEN date_part('year',w.date_id)= 2019 THEN 0
+		WHEN date_part('year',w.date_id)= 2020 THEN 1
+		WHEN date_part('year',w.date_id)= 2021 THEN 2
+		WHEN date_part('year',w.date_id)= 2022 THEN 3
+	ELSE NULL END AS yr, --for year column
+		
+	date_part('month',w.date_id) AS mnth, --for month column
+		
+	date_part('hour',w.time_id) AS hr, --for hour column
+	
+	CASE WHEN w.date_id = h.date_id THEN 1
+	ELSE 0 END AS holiday,
+	
+	EXTRACT(dow FROM w.date_id) AS weekday,
+	
+	CASE WHEN EXTRACT(dow FROM w.date_id) = 6 THEN 0
+		WHEN EXTRACT(dow FROM w.date_id) = 0 THEN 0
+		WHEN w.date_id = h.date_id THEN 0
+	ELSE 1 END AS workingday,
+	
+	ori_temp,a_temp,hum,wind_spd,
+	
+	mb.reg_member, mb.casual_member, mb.cnt
+	
+FROM weather_data AS w
+LEFT JOIN holidays AS h
+	ON w.date_id=h.date_id
+LEFT JOIN member_query AS mb
+	on w.date_id=mb.start_date
+ORDER BY w.date_id;
