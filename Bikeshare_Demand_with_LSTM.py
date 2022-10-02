@@ -1,3 +1,4 @@
+original file can be found here: "http://localhost:8888/notebooks/SciProject/Bike_Sharing_Prediction_LSTM.ipynb"
 #!/usr/bin/env python
 # coding: utf-8
 
@@ -188,7 +189,7 @@ def create_data_sequence(X, y, time_steps=1):
 
 
 # In[272]:
-
+### Let's define timestamp as 8hours and create the trainning & test set as numpy arrays for Kerras Library
 
 time_steps = 8
 
@@ -205,7 +206,9 @@ print("Test data shape", test_set_sequence.shape, "Test data output shape", test
 
 
 # In[294]:
-
+### Here, the LSTM model has been defined to capture the sequence. Dropout rate is 20% has been used to avoid overfitting.
+# Output is one unit as I wanted to predict one predicted value for the total rental bike might be needed in next hour.
+# Mean square error also used to prevent error from continuous data.
 
 def machine_learning_model():
     """Defines machine learning model
@@ -224,7 +227,7 @@ def machine_learning_model():
 
 
 # In[310]:
-
+### Trained the model here with training set and validating it with 10% of data.
 
 model = machine_learning_model()
 
@@ -250,7 +253,7 @@ plt.legend();
 
 
 # In[312]:
-
+### Let's store the prediction value in test_set_prediction
 
 predict_test_set = model.predict(test_set_sequence)
 
@@ -263,7 +266,7 @@ actual_testset_values = cnt_transformer.inverse_transform(test_set_output)
 
 
 # In[314]:
-
+### Following plot will shows 100 hours of Predicted Values vs Actual Values in test set.
 
 fig,ax = plt.subplots()
 plt.plot(model_predictions[:100,], label='Predicted ride count')
@@ -275,7 +278,7 @@ plt.show()
 
 
 # In[315]:
-
+### Let's check the mean absolute deviation fro the prediction value.
 
 def get_mean_absolute_deviations(predictions,actual_values):
     """ Compute the mean absolute deviations of predictions vs actual test set values
@@ -295,7 +298,7 @@ def get_mean_absolute_deviations(predictions,actual_values):
 
 
 # In[316]:
-
+### Let's get prediction on real-time sequence of data from the dataset.
 
 get_mean_absolute_deviations(model_predictions,actual_testset_values)
 
@@ -326,26 +329,6 @@ r_data = np.expand_dims(r_data, axis=0)
 
 print("Predicted Bike Share Count for next hour based on last", time_steps,"hours of data is", int(get_prediction(r_data)))
 
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
 
 
 
